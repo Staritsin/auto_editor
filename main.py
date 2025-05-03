@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, after_this_request
+from flask import Flask, request, send_file
 import os
 import subprocess
 import uuid
@@ -7,6 +7,9 @@ app = Flask(__name__)
 
 @app.route('/process', methods=['POST'])
 def process_video():
+    if 'file' not in request.files:
+        return 'No file part', 400
+
     file = request.files['file']
     uid = uuid.uuid4().hex
 
@@ -16,34 +19,34 @@ def process_video():
 
     file.save(input_path)
 
-    # Auto-Editor
-    subprocess.run([
-        'auto-editor', input_path,
-        '--output', edited_path,
-        '--edit', 'audio',
-        '--silent-threshold', '0.03',
-        '--video-speed', '1',
-        '--frame-margin', '6'
-    ], check=True)
+    try:
+        # Удаление тишины
+        subprocess.run([
+            'auto-editor', input_path,
+            '--output', edited_path,
+            '--edit', 'audio',
+            '--silent-threshold', '0.03',
+            '--video-speed', '1',
+            '--frame-margin', '6'
+        ], check=True)
 
-    # Сжатие ffmpeg
-    subprocess.run([
-        'ffmpeg', '-i', edited_path,
-        '-vcodec', 'libx264',
-        '-crf', '28',
-        '-preset', 'fast',
-        '-vf', 'scale=720:-2',
-        '-y', compressed_path
-    ], check=True)
+        # Сжатие
+        subprocess.run([
+            'ffmpeg', '-i', edited_path,
+            '-vcodec', 'libx264',
+            '-crf', '28',
+            '-preset', 'fast',
+            '-vf', 'scale=720:-2',
+            '-y', compressed_path
+        ], check=True)
 
-    # Очистка временных файлов после отправки
-    @after_this_request
-    def cleanup(response):
+        return send_file(compressed_path, as_attachment=True)
+
+    except Exception as e:
+        return f"Error: {e}", 500
+
+    finally:
+        # Удаление временных файлов
         for path in [input_path, edited_path, compressed_path]:
-            try:
+            if os.path.exists(path):
                 os.remove(path)
-            except:
-                pass
-        return response
-
-    return send_file(compressed_path, as_attachment=True)
