@@ -19,7 +19,7 @@ def process_video():
 
     file.save(input_path)
 
-    try:
+try:
     result = subprocess.run([
         'auto-editor', input_path,
         '--output', edited_path,
