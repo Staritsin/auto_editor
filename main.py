@@ -19,16 +19,16 @@ def process_video():
 
     file.save(input_path)
 
-try:
-    result = subprocess.run([
-        'auto-editor', input_path,
-        '--output', edited_path,
-        '--edit', 'audio',
-        '--silent-threshold', '0.03',
-        '--video-speed', '1',
-        '--frame-margin', '6'
-    ], check=True, capture_output=True, text=True)
-
+    try:
+        result = subprocess.run([
+            'auto-editor', input_path,
+            '--output', edited_path,
+            '--edit', 'audio',
+            '--silent-threshold', '0.03',
+            '--video-speed', '1',
+            '--frame-margin', '6'
+        ], check=True, capture_output=True, text=True)
+    
     except subprocess.CalledProcessError as e:
         return f"Auto-Editor Error:\n{e.stderr}", 500
         
