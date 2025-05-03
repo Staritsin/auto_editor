@@ -20,19 +20,16 @@ def process_video():
     file.save(input_path)
 
     try:
-        result = subprocess.run([
+        # Удаление тишины (обновлённая команда!)
+        subprocess.run([
             'auto-editor', input_path,
             '--output', edited_path,
-            '--edit', 'audio',
-            '--silent-threshold', '0.03',
+            '--edit', 'audio:threshold=0.03',
             '--video-speed', '1',
             '--frame-margin', '6'
         ], check=True, capture_output=True, text=True)
-    
-    except subprocess.CalledProcessError as e:
-        return f"Auto-Editor Error:\n{e.stderr}", 500
-        
-        # Сжатие
+
+        # Сжатие видео
         subprocess.run([
             'ffmpeg', '-i', edited_path,
             '-vcodec', 'libx264',
@@ -44,11 +41,13 @@ def process_video():
 
         return send_file(compressed_path, as_attachment=True)
 
+    except subprocess.CalledProcessError as e:
+        return f"Auto-Editor Error:\n{e.stderr}", 500
+
     except Exception as e:
-        return f"Error: {e}", 500
+        return f"Unexpected Error: {str(e)}", 500
 
     finally:
-        # Удаление временных файлов
         for path in [input_path, edited_path, compressed_path]:
             if os.path.exists(path):
                 os.remove(path)
