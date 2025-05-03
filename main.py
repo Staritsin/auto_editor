@@ -22,4 +22,16 @@ def process_video():
         '--frame-margin', '6'
     ])
 
+from flask import after_this_request
+
+@after_this_request
+def cleanup(response):
+    try:
+        os.remove(filename)
+        os.remove(output)
+    except:
+        pass
+    return response
+
+
     return send_file(output, as_attachment=True)
