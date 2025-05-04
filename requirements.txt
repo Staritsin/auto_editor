@@ -1,4 +1,4 @@
-Flask
-gunicorn
-ffmpeg-python
-auto-editor==23.1.0
+Flask==2.3.3
+gunicorn==21.2.0
+auto-editor==27.1.1
+ffmpeg-python==0.2.0
