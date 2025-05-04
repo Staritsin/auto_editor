@@ -22,7 +22,9 @@ def process():
     f.save(input_path)
 
     try:
-        subprocess.run([
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return f"Processing error:\n{result.stderr}", 500
             "auto-editor", input_path,
             "--edit", "audio",
             "--silent-threshold", "0.03",
