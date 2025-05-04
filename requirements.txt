@@ -1,4 +1,4 @@
 Flask
 gunicorn
-auto-editor==23.1.0
+auto-editor
 ffmpeg-python
