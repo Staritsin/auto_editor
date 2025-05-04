@@ -1,41 +1,47 @@
-from flask import Flask, request, send_file
-import subprocess
-import uuid
+from flask import Flask, request, jsonify
 import os
+import uuid
+import subprocess
 
 app = Flask(__name__)
 
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'outputs'
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
 @app.route('/')
-def hello():
-    return "Hello from Auto-Editor API!"
+def index():
+    return 'Auto-Editor API is working!'
 
 @app.route('/process', methods=['POST'])
-def process():
+def process_video():
     if 'file' not in request.files:
-        return 'No file uploaded', 400
+        return jsonify({'error': 'No file provided'}), 400
 
-    f = request.files['file']
-    uid = uuid.uuid4().hex
-    input_path = f"input_{uid}.mp4"
-    output_path = f"output_{uid}.mp4"
-    f.save(input_path)
+    file = request.files['file']
+    filename = f"{uuid.uuid4()}.mp4"
+    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    output_path = os.path.join(OUTPUT_FOLDER, f"output_{filename}")
+
+    file.save(input_path)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            return f"Processing error:\n{result.stderr}", 500
-            "auto-editor", input_path,
-            "--edit", "audio",
-            "--silent-threshold", "0.03",
-            "--video-speed", "1",
-            "--frame-margin", "6",
-            "--output", output_path
-        ], check=True)
+        result = subprocess.run([
+            'auto-editor',
+            input_path,
+            '--edit', 'audio',
+            '--silent-threshold', '0.03',
+            '--video-speed', '1',
+            '--frame-margin', '6',
+            '--output', output_path
+        ], check=True, capture_output=True, text=True)
 
-        return send_file(output_path, as_attachment=True)
+        return jsonify({'message': 'Processing complete', 'output_file': output_path}), 200
+
     except subprocess.CalledProcessError as e:
-        return f"Processing error: {e}", 500
-    finally:
-        for path in [input_path, output_path]:
-            if os.path.exists(path):
-                os.remove(path)
+        return jsonify({'error': 'Processing failed', 'details': e.stderr}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
