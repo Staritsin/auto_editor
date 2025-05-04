@@ -1,49 +1,41 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file
 import os
-import uuid
 import subprocess
+import uuid
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "outputs"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-@app.route("/")
-def index():
-    return "Auto-Editor API is running."
-
-@app.route("/process", methods=["POST"])
+@app.route('/process', methods=['POST'])
 def process_video():
     if 'file' not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
+        return 'No file part', 400
 
     file = request.files['file']
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    uid = uuid.uuid4().hex
 
-    input_filename = f"{uuid.uuid4()}.mp4"
-    input_path = os.path.join(UPLOAD_FOLDER, input_filename)
+    input_path = f"input_{uid}.mp4"
+    output_path = f"output_{uid}.mp4"
+
     file.save(input_path)
-
-    output_filename = f"output_{input_filename}"
-    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
 
     try:
         result = subprocess.run([
-            "auto-editor", input_path,
-            "--edit", "audio",
-            "--output", output_path
-        ], capture_output=True, text=True, check=True)
+            'auto-editor', input_path,
+            '--output', output_path,
+            '--edit', 'audio',
+            '--video-speed', '1',
+            '--frame-margin', '6'
+        ], capture_output=True, text=True, timeout=180, check=True)
 
         return send_file(output_path, as_attachment=True)
 
     except subprocess.CalledProcessError as e:
-        return jsonify({
-            "error": "Processing failed",
-            "details": e.stderr
-        }), 500
+        return f"Auto-Editor Error:\n{e.stderr}", 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    except Exception as e:
+        return f"Unexpected Error: {str(e)}", 500
+
+    finally:
+        for path in [input_path, output_path]:
+            if os.path.exists(path):
+                os.remove(path)
